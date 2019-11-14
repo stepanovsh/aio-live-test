@@ -1,0 +1,48 @@
+# Mac OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+.pytest_cache/
+
+# local environment
+.env/
+
+# Sphinx
+docs/build/
+
+
+# Project folders
+*.gaedata
+.idea/
+app/lib
+discovery/
+openapi/
+
+# certificates
+*.pem
+
+tox.ini
+
+# exclude lst
+/app/_dev/*.lst
+
+app/secret_keys.yaml
+
+/hopsterv1openapi.json
+/integratorv1openapi.json
