@@ -9,10 +9,13 @@ from collections import namedtuple
 import common
 
 
+Game = namedtuple('Game', ['id', 'name'])
+
+
 async def handle(request):
-    name = request.match_info.get('name', "Anonymous")
-    text = "Hello, " + name
-    return web.Response(text=text)
+    text = await common.return_from_file('games.bin')
+    print(text)
+    return web.Response(text='Unpucked')
 
 
 async def fetch(session, url):
@@ -55,7 +58,6 @@ async def get_games_titles(platform_id: int, game_obj: dict):
     offset = 0
     limit = 100
     size = limit
-    Game = namedtuple('Game', ['id', 'name', 'original_game_rating'])
     url_params = {
         'api_key': common.API_KEY,
         'format': 'json',
@@ -96,6 +98,8 @@ async def sync(request):
     tasks = [get_games_titles(platform_id, game_obj) for platform_id in result_set]
 
     await asyncio.wait(tasks)
+
+    await common.save_to_file(game_obj, 'games.bin')
 
     return web.Response(text=text)
 

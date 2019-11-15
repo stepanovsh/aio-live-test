@@ -1,2 +1,3 @@
 aiohttp==3.6.2
 python-dotenv==0.10.3
+aiofiles==0.4.0

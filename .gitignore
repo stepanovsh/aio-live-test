@@ -21,29 +21,9 @@ coverage.xml
 .pytest_cache/
 
 # local environment
-.env/
 .env
 
-# Sphinx
-docs/build/
-
-
-# Project folders
-*.gaedata
-.idea/
-app/lib
-discovery/
-openapi/
-
 # certificates
-*.pem
+*.bin
 
-tox.ini
 
-# exclude lst
-/app/_dev/*.lst
-
-app/secret_keys.yaml
-
-/hopsterv1openapi.json
-/integratorv1openapi.json
