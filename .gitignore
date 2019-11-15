@@ -22,6 +22,7 @@ coverage.xml
 
 # local environment
 .env/
+.env
 
 # Sphinx
 docs/build/
