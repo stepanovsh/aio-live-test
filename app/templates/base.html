@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{title}}</title>
+</head>
+<body>
+    <h1>Search</h1>
+    <div>
+        <form action="/" method="get">
+            <input type="text" name="search" id="id_search" value="{{search}}">
+            <input type="submit">
+        </form>
+    </div>
+    <div>
+        {% if result_list %}
+            <h2> Results </h2>
+            <ul id="navigation">
+            {% for item in result_list %}
+                <li>Document {{item.id}} - {{item.name}}</li>
+            {% endfor %}
+            </ul>
+        {% elif search and not result_list %}
+            <b>No results with key: {{search}}</b>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,105 +1,60 @@
 import asyncio
 import logging
+from functools import reduce
 
-import aiohttp
+import aiohttp_jinja2
 from aiohttp import web
-from urllib.parse import urlencode
-from collections import namedtuple
 
 import common
+from index import index, db, indexing_document
 
 
-Game = namedtuple('Game', ['id', 'name'])
-
-
+@aiohttp_jinja2.template('base.html')
 async def handle(request):
-    text = await common.return_from_file('games.bin')
-    print(text)
-    return web.Response(text='Unpucked')
+    """Search handler"""
+    search = request.query.get('search', '')
+    if not index.indexed:
+        # ToDo add file check
+        logging.info('Start indexing from file')
+        games_result = await common.return_from_file('games.bin')
+        indexing_document(games_result)
+        logging.info('Finish indexing from file')
 
+    result_list = []
+    if search:
+        result = index.lookup_query(search)
 
-async def fetch(session, url):
-    async with session.get(url) as response:
-        return await response.json()
-
-
-async def get_platforms_ids(abbreviation: str, ids: set):
-    """Retrieve platforms id async"""
-    offset = 0
-    limit = 100
-    size = limit
-    url_params = {
-        'api_key': common.API_KEY,
-        'format': 'json',
-        'offset': offset,
-        'limit': limit,
-        'filter': 'abbreviation:{}'.format(abbreviation)
+        result_list = []
+        for term in result.keys():
+            for appearance in result[term]:
+                document = db.get(appearance.doc_id)
+                result_list.append(common.Game(id=appearance.doc_id, name=document['text']))
+    return {
+        'title': 'Search',
+        'result_list': result_list,
+        'search': search
     }
-
-    async with aiohttp.ClientSession() as session:
-        while offset < size:
-            url = '{}{}/?{}'.format(common.API_URL, 'platforms', urlencode(url_params))
-            logging.info('fetching url: %s', url)
-
-            resp = await fetch(session, url)
-
-            results = resp.get('results', [])
-            for res in results:
-                if res['abbreviation'] == abbreviation:
-                    ids.add(res['id'])
-            size = resp.get('number_of_total_results', limit)
-            offset += limit
-            url_params['offset'] = offset
-
-
-async def get_games_titles(platform_id: int, game_obj: dict):
-    """Retrieve games async"""
-    logging.info('Start fetching: %s games', platform_id)
-    offset = 0
-    limit = 100
-    size = limit
-    url_params = {
-        'api_key': common.API_KEY,
-        'format': 'json',
-        'offset': offset,
-        'limit': limit,
-        'platforms': platform_id
-    }
-
-    async with aiohttp.ClientSession() as session:
-        while offset < size:
-            url = '{}{}/?{}'.format(common.API_URL, 'games', urlencode(url_params))
-            logging.info('fetching url: %s', url)
-
-            resp = await fetch(session, url)
-
-            results = resp.get('results', [])
-            for res in results:
-                game_obj[res['id']] = Game(
-                    id=res['id'],
-                    name=res['name'],
-                    original_game_rating=res.get('original_game_rating')
-                )
-            size = resp.get('number_of_total_results', limit)
-            offset += limit
-            url_params['offset'] = offset
-
-    logging.info('Finish fetching: %s games', platform_id)
 
 
 async def sync(request):
+    """Sync handler"""
     text = "Hello,  Finish"
-    result_set = set()
-    tasks = [get_platforms_ids(abrv, result_set) for abrv in common.PLATFORMS]
-    await asyncio.wait(tasks)
+    tasks = [asyncio.ensure_future(common.get_platforms_ids(abrv)) for abrv in common.PLATFORMS]
+    result_set = reduce(lambda base, next_el: base.union(next_el), await asyncio.gather(*tasks))
 
-    game_obj = {}
+    tasks = [asyncio.ensure_future(common.get_games_titles(platform_id)) for platform_id in result_set]
 
-    tasks = [get_games_titles(platform_id, game_obj) for platform_id in result_set]
+    results = await asyncio.gather(*tasks)
 
-    await asyncio.wait(tasks)
+    def update_dict(base, next_el):
+        base.update(next_el)
+        return base
 
-    await common.save_to_file(game_obj, 'games.bin')
+    games_result = reduce(update_dict, results)
+
+    indexing_document(games_result)
+
+    await common.save_to_file(games_result, 'games.bin')
 
     return web.Response(text=text)
 
